@@ -1,40 +1,54 @@
 ```mermaid
 sequenceDiagram
-    participant User
-    participant SmartAccount
-    participant RideOperator
-    participant DelegationAgent
-    participant SablierFlow
-    participant EnvioIndexer
+    autonumber
 
-    Note over User,SmartAccount: Step 1 - Set up pay-per-ride streaming delegation
-    User->>SmartAccount: Create delegation with ERC-20 streaming scope (rate per second)
-    SmartAccount->>DelegationAgent: Grant limited authority (stream initiation only)
-    SmartAccount->>EnvioIndexer: Index delegation state (limits, expiry, stream ID)
+    participant User as Rider (User)
+    participant RentalApp as RentalRide DApp
+    participant Delegator as User Smart Account
+    participant Delegate as Vehicle Smart Agent
+    participant DelegationMgr as DelegationManager
+    participant Bundler as BundlerClient
+    participant Envio as Envio Indexer
 
-    Note over User,RideOperator: Step 2 - Ride booking and stream initiation
-    User->>RideOperator: Request ride
-    RideOperator->>DelegationAgent: Trigger ride start (create stream request)
-    DelegationAgent->>SablierFlow: Start token stream from SmartAccount to RideOperator
-    SablierFlow-->>RideOperator: Begin receiving tokens per second (real-time payment)
+    %% ---------------------------
+    Note over User,Envio: 🚦 Phase 1 – Setup & Delegation Creation
+    User->>RentalApp: Connect wallet (MetaMask Smart Account)
+    RentalApp->>Delegator: toMetaMaskSmartAccount()
+    User->>RentalApp: Select vehicle to rent
+    RentalApp->>Delegator: createDelegation({ scope: nativeTokenStreaming, ... })
+    Delegator->>Delegator: signDelegation() for spending limit (e.g., 0.001 ETH/sec)
+    Delegator-->>Delegate: Send signed delegation token
 
-    Note over SablierFlow,EnvioIndexer: Step 3 - Real-time monitoring
-    SablierFlow-->>EnvioIndexer: Emit StreamCreated and StreamUpdated events
-    EnvioIndexer->>DelegationAgent: Report stream status, remaining balance, or end conditions
+    %% ---------------------------
+    Note over Delegate,DelegationMgr: 🏁 Phase 2 – Start Ride
+    Delegate->>DelegationMgr: encode.redeemDelegations()
+    Delegate->>Bundler: sendUserOperation() to start trip
+    Bundler->>DelegationMgr: Execute delegation transaction
+    DelegationMgr-->>Delegate: Validates and activates streaming spend
+    DelegationMgr-->>Envio: Emit DelegationRedeemed (ride start)
 
-    Note over DelegationAgent,SmartAccount: Step 4 - Auto stop or revoke
-    alt Ride ends or time limit reached
-        EnvioIndexer->>DelegationAgent: Detect stop condition
-        DelegationAgent->>SablierFlow: Stop or cancel stream
-        DelegationAgent->>SmartAccount: Revoke or reset delegation
-    else Stream continues
-        EnvioIndexer->>DelegationAgent: Keep monitoring stream flow
+    %% ---------------------------
+    Note over Delegate,DelegationMgr: 🚴 Phase 3 – During Ride (Streaming Payment)
+    loop every few seconds
+        DelegationMgr->>Delegate: Allow linear spend (via nativeTokenStreaming)
+        Delegate->>RentalApp: Update real-time balance / ride duration
+    end
+    Envio-->>RentalApp: Stream updated delegation state and usage
+
+    %% ---------------------------
+    Note over Delegate,Delegator: 🏁 Phase 4 – End Ride
+    User->>RentalApp: End ride
+    RentalApp->>Delegate: Trigger finalize via redeemDelegations() stop condition
+    Delegate->>Bundler: sendUserOperation() finalize payment & close delegation
+    DelegationMgr-->>Delegator: Mark delegation spent or expired
+    Envio-->>RentalApp: Emit DelegationExpired / RideCompleted event
+
+    %% ---------------------------
+    Note over Delegator,User: 🔁 Phase 5 – Optional Renewal
+    alt User wants another ride
+        User->>Delegator: createDelegation() + signDelegation()
+    else Done
+        Delegator->>Envio: Listen for event logs & history
     end
 
-    Note over User,RideOperator: Step 5 - Complete ride
-    SablierFlow-->>RideOperator: Final streamed amount settled
-    DelegationAgent-->>SmartAccount: Finalize and clean delegation session
-    EnvioIndexer-->>User: Update analytics and payment history
-
-    Note over System: Repeat for each ride or rental session — all automated, trustless, and gasless for the user
 ```
