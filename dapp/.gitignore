@@ -1,0 +1,25 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Build output
+.next/
+out/
+
+# Environment variables
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/
+*.swp
+
+# Coverage reports
+coverage/

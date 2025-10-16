@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-[#1E2329] text-white;
+  }
+  
+  ::selection {
+    @apply bg-[#F6851B]/40 text-white;
+  }
+}
+
+@layer utilities {
+  .animate-wiggle {
+    animation: wiggle 1s ease-in-out infinite;
+  }
+  
+  .glassmorphism {
+    @apply bg-white/10 backdrop-blur-lg backdrop-saturate-150 border border-white/10;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-r from-[#F6851B] to-[#F5B567] bg-clip-text text-transparent;
+  }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+.bg-gradient-radial {
+  background-image: radial-gradient(var(--tw-gradient-stops));
+}
